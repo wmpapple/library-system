@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # 1. MySQL (使用你提供的 root:1234)
+  db_mysql:
+    image: mysql:8.0
+    container_name: library_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "1234"
+      MYSQL_DATABASE: "library_mysql"
+    ports:
+      - "3307:3306" # 外部访问用 3307
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # 2. PostgreSQL (使用你提供的 postgres:123456)
+  db_postgres:
+    image: postgres:13
+    container_name: library_pg
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "123456"
+      POSTGRES_DB: "library_pg"
+    ports:
+      - "5433:5432" # 外部访问用 5433
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # 3. SQL Server (注意：密码强制改为了强密码，用户默认为 sa)
+  db_sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: library_sqlserver
+    user: root
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Password123!" # 必须用强密码，否则容器无法启动
+    ports:
+      - "1434:1433" # 外部访问用 1434
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  # 4. 后端 (自动读取环境变量)
+  backend:
+    build: ./backend
+    container_name: library_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db_mysql
+      - db_postgres
+      - db_sqlserver
+    environment:
+      # 这里告诉后端：不要去连 localhost，要去连容器的名字！
+      MYSQL_URL: "mysql+pymysql://root:1234@db_mysql/library_mysql"
+      POSTGRES_URL: "postgresql+psycopg2://postgres:123456@db_postgres/library_pg"
+      SQLSERVER_URL: "mssql+pymssql://sa:Password123!@db_sqlserver/tempdb"
+      # 注意：SQL Server 这里暂时用 tempdb 或者你自己创建的库，初始容器里没有 library_sqlserver 库，但这不影响连接测试
+
+      # 5. 前端
+  frontend:
+    build: ./frontend
+    container_name: library_frontend
+    ports:
+      - "8080:8080"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  pg_data:
+  mssql_data:
