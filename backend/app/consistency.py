@@ -116,8 +116,6 @@ def pre_modification_check(model_class: Type[models.Base], record_id: int, sourc
                 table_name=model_class.__tablename__,
                 record_id=record_id,
                 conflict_id=new_conflict.id,
-                conflicting_data=all_instance_dicts,
-                notification_type="pre-modification",
             )
 
         raise ValueError(

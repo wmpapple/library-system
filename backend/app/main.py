@@ -98,6 +98,7 @@ app.include_router(borrow.router)
 app.include_router(dashboard.router)
 app.include_router(settings.router)
 app.include_router(conflicts.router)
+app.include_router(conflicts.public_router)
 app.include_router(stats.router)
 
 @app.get("/")

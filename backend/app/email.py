@@ -62,4 +62,3 @@ def send_email(subject: str, body: str, email_to: str | None = None):
                 server.quit()
             except smtplib.SMTPException:
                 pass # Ignore errors on quit
-

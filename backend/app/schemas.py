@@ -222,6 +222,11 @@ class DataConflictUpdate(BaseModel):
     source_db: str
 
 
+class ConflictAccess(BaseModel):
+    token: str
+    password: str
+
+
 
 class StatsSummary(BaseModel):
     total_books: int

@@ -8,8 +8,10 @@ import SeatReservation from '../views/SeatReservation.vue'
 import AdminSeats from '../views/AdminSeats.vue'
 import DataSynchronization from '../views/SyncLogs.vue'
 import SyncStats from '../views/SyncStats.vue'
+import ConflictResolution from '../views/ConflictResolution.vue';
 
 const routes = [
+  { path: '/conflict-resolution/:token', component: ConflictResolution },
   { path: '/login', component: Login },
   {
     path: '/',

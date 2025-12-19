@@ -10,6 +10,8 @@ from typing import Iterable, Type
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import Session
+
 
 from . import models
 from .database import ENGINES, get_session
@@ -138,56 +140,62 @@ class SyncManager:
 
     def _send_conflict_email(
         self,
-        session: Session,
+        session: "Session",
         *,
         table_name: str,
         record_id: int,
         conflict_id: int,
-        conflicting_data: dict[str, any],
-        notification_type: str,
     ):
         """
-        Sends a standardized email notification for a data conflict.
-        
+        Sends an email notification with a secure link to resolve a data conflict.
+
         :param session: The SQLAlchemy session to use for querying admin users.
         :param table_name: The name of the table with the conflict.
         :param record_id: The ID of the conflicting record.
         :param conflict_id: The ID of the DataConflict entry.
-        :param conflicting_data: A dictionary containing the different versions of the data.
-        :param notification_type: A string describing when the conflict was detected (e.g., "pre-modification").
         """
-        import json
-        from . import config, crud
+        from . import crud
         from .email import send_email
+        from .security import create_conflict_view_token
 
         subject = f"URGENT: Data Conflict Detected in {table_name}"
-        pretty_conflicts = json.dumps(conflicting_data, indent=2, ensure_ascii=False)
-
-        if notification_type == "pre-modification":
-            intro = "A data conflict was detected during a pre-modification check, and the requested operation was automatically aborted."
-        else:  # "post-sync"
-            intro = "A data conflict was detected during data synchronization."
-
-        body = (
-            f"{intro}\n\n"
-            f"Table: {table_name}\n"
-            f"Record ID: {record_id}\n"
-            f"Conflict ID: {conflict_id}\n\n"
-            f"The following conflicting data was found across the databases:\n\n{pretty_conflicts}\n\n"
-            f"Please log in to the admin panel to resolve this conflict."
-        )
-
-        admin_emails = set()
+        
         try:
             admins = crud.get_admin_users(session)
-            for admin in admins:
-                if admin.email:
-                    admin_emails.add(admin.email)
+            if not admins:
+                logger.warning("No admin users found to send conflict notification email.")
+                return
         except Exception as e:
             logger.error(f"Error getting admin users for conflict email notification: {e}")
+            return
 
-        for email in filter(None, admin_emails):
-            send_email(email_to=email, subject=subject, body=body)
+        for admin in admins:
+            if not admin.email:
+                continue
+
+            try:
+                # Generate a unique token for this specific admin and conflict
+                token = create_conflict_view_token(admin_email=admin.email, conflict_id=conflict_id)
+                
+                # TODO: Make the base URL configurable
+                resolution_url = f"http://localhost:8081/conflict-resolution/{token}"
+
+                body = (
+                    f"A data conflict has been detected and requires your attention.\n\n"
+                    f"Table: {table_name}\n"
+                    f"Record ID: {record_id}\n\n"
+                    f"Please use the following secure link to view and resolve the conflict. "
+                    f"You will be required to enter your password to proceed.\n\n"
+                    f"Link: {resolution_url}\n\n"
+                    f"This link will expire in 24 hours."
+                )
+
+                send_email(email_to=admin.email, subject=subject, body=body)
+                logger.info(f"Sent conflict notification email to {admin.email} for conflict ID {conflict_id}")
+
+            except Exception as e:
+                logger.error(f"Failed to send conflict notification email to {admin.email}: {e}")
+
 
 
 sync_manager = SyncManager()

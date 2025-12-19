@@ -1,8 +1,8 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import router from "./router"; // 引入路由配置
+import router from "./router";
 
 const app = createApp(App)
 
-app.use(router) // 核心修复：挂载路由
+app.use(router)
 app.mount('#app')

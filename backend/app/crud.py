@@ -36,6 +36,10 @@ def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
     return db.execute(select(models.User).where(models.User.username == username)).scalar_one_or_none()
 
 
+def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+    return db.execute(select(models.User).where(models.User.email == email)).scalar_one_or_none()
+
+
 def get_admin_users(db: Session) -> List[models.User]:
     """Retrieves a list of all admin users."""
     return list(db.execute(select(models.User).where(models.User.role == "admin")).scalars())

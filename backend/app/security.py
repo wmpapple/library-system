@@ -6,6 +6,8 @@ import hashlib
 import hmac
 import os
 from typing import Any, Dict
+
+from fastapi import HTTPException
 from .schemas import TokenPayload
 
 import jwt
@@ -33,3 +35,29 @@ def decode_access_token(token: str) -> TokenPayload:
     """Decodes the access token and returns a TokenPayload object."""
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     return TokenPayload(**payload)
+
+
+def create_conflict_view_token(admin_email: str, conflict_id: int) -> str:
+    """Creates a short-lived JWT for viewing a specific conflict."""
+    expires_delta = timedelta(hours=24)
+    expire = datetime.utcnow() + expires_delta
+    to_encode = {
+        "sub": admin_email,
+        "conflict_id": conflict_id,
+        "exp": expire,
+        "type": "conflict_view"  # Add a token type for better validation
+    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_conflict_view_token(token: str) -> dict:
+    """Decodes the conflict view token and returns the payload."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "conflict_view":
+            raise jwt.InvalidTokenError("Invalid token type")
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Conflict view token has expired")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid conflict view token: {e}")
