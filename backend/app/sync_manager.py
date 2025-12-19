@@ -178,7 +178,7 @@ class SyncManager:
                 token = create_conflict_view_token(admin_email=admin.email, conflict_id=conflict_id)
                 
                 # TODO: Make the base URL configurable
-                resolution_url = f"http://localhost:8081/conflict-resolution/{token}"
+                resolution_url = f"http://localhost:8080/conflict-resolution/{token}"
 
                 body = (
                     f"A data conflict has been detected and requires your attention.\n\n"
